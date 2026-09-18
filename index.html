@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KARDOBU — Official Store</title>
+<meta name="description" content="KARDOBU Official Store">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<header class="nav"><a class="logo" href="#">KARDOBU<span>.</span></a><nav><a href="#products">Products</a><a href="#about">About</a><a href="admin.html">Admin</a></nav><button class="pill" onclick="openCart()">Cart <b id="count">0</b></button></header>
+
+<section class="hero"><div class="hero-content"><small>KARDOBU / OFFICIAL STORE</small><h1 id="heroTitle">WEAR YOUR<br><em>IDENTITY.</em></h1><p id="heroSub">Premium streetwear dengan karakter kuat.</p><a class="button" href="#products">SHOP NOW</a></div><div class="hero-mark">K</div></section>
+
+<section id="products" class="section"><div class="section-top"><div><small>LATEST DROP</small><h2>Products</h2></div><span id="itemCount"></span></div><div id="grid" class="grid"><p class="muted">Memuat produk...</p></div></section>
+
+<section id="about" class="section about"><small>ABOUT KARDOBU</small><h2>Built for those<br>who move different.</h2><p>KARDOBU menghadirkan pakaian dengan pendekatan clean, bold, dan functional untuk menemani aktivitas sehari-hari.</p></section>
+<footer><b>KARDOBU.</b><span>© <span id="year"></span> KARDOBU Official Store</span></footer>
+
+<div id="modal" class="overlay hidden"><div class="modal"><button class="x" onclick="closeModal()">×</button><div id="modalBody"></div></div></div>
+<aside id="drawer" class="drawer hidden"><div class="drawer-head"><h3>YOUR CART</h3><button class="x" onclick="closeCart()">×</button></div><div id="cart"></div><div class="drawer-foot"><div class="total"><span>Total</span><b id="total">Rp0</b></div><button class="button full" onclick="checkout()">CHECKOUT VIA WHATSAPP</button></div></aside>
+
+<script>
+const SUPABASE_URL="https://xidiyskrefayaimgoiyp.supabase.co";
+const SUPABASE_KEY="PASTE_PUBLISHABLE_KEY_HERE";
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let products=[],cart=JSON.parse(localStorage.getItem("kardobu_cart")||"[]"),settings={};
+
+const money=n=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(n);
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+
+async function init(){
+ const s=await db.from("store_settings").select("*").eq("id",1).maybeSingle();
+ if(s.data){settings=s.data;if(s.data.hero_title) document.getElementById("heroTitle").innerHTML=esc(s.data.hero_title).replace(/\n/g,"<br>");if(s.data.hero_subtitle)document.getElementById("heroSub").textContent=s.data.hero_subtitle;}
+ const r=await db.from("products").select("*").order("created_at",{ascending:false});
+ if(r.error){document.getElementById("grid").innerHTML="<p class='muted'>Gagal memuat produk. Periksa Supabase key.</p>";return}
+ products=r.data||[];render();renderCart();
+}
+function render(){
+ document.getElementById("itemCount").textContent=products.length+" ITEMS";
+ document.getElementById("grid").innerHTML=products.length?products.map(p=>`
+ <article class="card"><div class="photo">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}">`:`<div class="placeholder">KARDOBU<span>.</span></div>`}<i>${esc(p.status)}</i></div><div class="info"><h3>${esc(p.name)}</h3><b>${money(p.price)}</b><button class="button outline full" onclick="detail('${p.id}')">VIEW PRODUCT</button></div></article>`).join(""):"<p class='muted'>Belum ada produk.</p>";
+}
+function detail(id){
+ const p=products.find(x=>x.id===id);if(!p)return;
+ window.sel=p;window.selSize=p.sizes?.[0]||"";window.selQty=1;
+ document.getElementById("modalBody").innerHTML=`<div class="detail"><div class="detail-photo">${p.image_url?`<img src="${esc(p.image_url)}">`:`<div class="placeholder">KARDOBU<span>.</span></div>`}</div><div><small>${esc(p.status)}</small><h2>${esc(p.name)}</h2><b class="bigprice">${money(p.price)}</b><p class="muted">${esc(p.description||"")}</p><label>SIZE</label><div class="sizes">${(p.sizes||[]).map((s,i)=>`<button class="size ${i===0?"active":""}" onclick="pickSize('${esc(s)}',this)">${esc(s)}</button>`).join("")}</div><label>QTY</label><div class="qty"><button onclick="qty(-1)">−</button><b id="qty">1</b><button onclick="qty(1)">+</button></div><button class="button full" onclick="add()">ADD TO CART</button></div></div>`;
+ openModal();
+}
+function pickSize(s,b){window.selSize=s;document.querySelectorAll(".size").forEach(x=>x.classList.remove("active"));b.classList.add("active")}
+function qty(n){window.selQty=Math.max(1,(window.selQty||1)+n);document.getElementById("qty").textContent=window.selQty}
+function add(){let x=cart.find(x=>x.product_id===sel.id&&x.size===selSize);if(x)x.quantity+=selQty;else cart.push({product_id:sel.id,name:sel.name,price:sel.price,size:selSize,quantity:selQty});save();closeModal();openCart()}
+function save(){localStorage.setItem("kardobu_cart",JSON.stringify(cart));renderCart()}
+function renderCart(){document.getElementById("count").textContent=cart.reduce((a,x)=>a+x.quantity,0);let total=0;document.getElementById("cart").innerHTML=cart.length?cart.map((x,i)=>{let sub=x.price*x.quantity;total+=sub;return `<div class="cart-item"><div><b>${esc(x.name)}</b><small>Size ${esc(x.size)} · ${x.quantity} pcs</small></div><div><b>${money(sub)}</b><button class="remove" onclick="removeItem(${i})">Hapus</button></div></div>`}).join(""):"<p class='muted empty'>Keranjang kosong.</p>";document.getElementById("total").textContent=money(total)}
+function removeItem(i){cart.splice(i,1);save()}
+function openCart(){document.getElementById("drawer").classList.remove("hidden");renderCart()}
+function closeCart(){document.getElementById("drawer").classList.add("hidden")}
+function openModal(){document.getElementById("modal").classList.remove("hidden")}
+function closeModal(){document.getElementById("modal").classList.add("hidden")}
+async function checkout(){
+ if(!cart.length)return alert("Keranjang masih kosong.");
+ closeCart();
+ let total=cart.reduce((a,x)=>a+x.price*x.quantity,0);
+ document.getElementById("modalBody").innerHTML=`<small>CHECKOUT</small><h2>Data Pembeli</h2><div class="summary">${cart.map(x=>`<div><span>${esc(x.name)} / ${esc(x.size)} × ${x.quantity}</span><b>${money(x.price*x.quantity)}</b></div>`).join("")}<hr><div><b>TOTAL</b><b>${money(total)}</b></div></div><div class="form"><label>NAMA</label><input id="name" placeholder="Nama lengkap"><label>NO. WHATSAPP</label><input id="phone" placeholder="08xxxxxxxxxx"><label>ALAMAT</label><textarea id="address" placeholder="Alamat lengkap"></textarea><label>CATATAN</label><textarea id="note" placeholder="Opsional"></textarea><button class="button full" onclick="sendOrder()">KIRIM ORDER VIA WHATSAPP</button></div>`;
+ openModal();
+}
+async function sendOrder(){
+ const name=document.getElementById("name").value.trim(),phone=document.getElementById("phone").value.trim(),address=document.getElementById("address").value.trim(),note=document.getElementById("note").value.trim();
+ if(!name||!phone||!address)return alert("Nama, WhatsApp, dan alamat wajib diisi.");
+ if(!settings.whatsapp_number)return alert("Nomor WhatsApp toko belum diatur di Admin.");
+ const total=cart.reduce((a,x)=>a+x.price*x.quantity,0),code="KDB-"+Date.now();
+ const o=await db.from("orders").insert({order_code:code,customer_name:name,customer_phone:phone,customer_address:address,note,total_amount:total,whatsapp_sent:true}).select().single();
+ if(o.error)return alert("Order gagal disimpan: "+o.error.message);
+ const items=cart.map(x=>({order_id:o.data.id,product_id:x.product_id,product_name:x.name,size:x.size,quantity:x.quantity,price:x.price,subtotal:x.price*x.quantity}));
+ const it=await db.from("order_items").insert(items);
+ if(it.error)return alert("Detail order gagal disimpan: "+it.error.message);
+ let msg=`*KARDOBU — ORDER ${code}*%0A%0A`+cart.map(x=>`• ${x.name} | Size: ${x.size} | Qty: ${x.quantity} | ${money(x.price*x.quantity)}`).join("%0A")+`%0A%0A*TOTAL: ${money(total)}*%0A%0A*DATA PEMBELI*%0ANama: ${name}%0ANo. WhatsApp: ${phone}%0AAlamat: ${address}%0ACatatan: ${note||"-"}%0A%0AMohon konfirmasi pembayaran dan pesanan saya.`;
+ cart=[];save();closeModal();window.open("https://wa.me/"+settings.whatsapp_number+"?text="+msg,"_blank");
+}
+document.getElementById("year").textContent=new Date().getFullYear();init();
+</script>
+</body></html>
