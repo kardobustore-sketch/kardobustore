@@ -14,7 +14,7 @@
 <div class="panel"><p class="eyebrow">STORE SETTINGS</p><div class="field"><label>WHATSAPP</label><input id="wa"></div><div class="field"><label>INSTAGRAM</label><input id="ig"></div><div class="field"><label>QRIS IMAGE URL</label><input id="qris"></div><div class="field"><label>HERO SUBTITLE</label><input id="sub"></div><button class="button" onclick="saveSettings()">SIMPAN PENGATURAN</button></div>
 </div>
 <script>
-const SUPABASE_URL="https://xidiyskrefayaimgoiyp.supabase.co";const SUPABASE_KEY="PASTE_PUBLISHABLE_KEY_HERE";const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);const money=n=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(n);const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+const SUPABASE_URL="https://xidiyskrefayaimgoiyp.supabase.co";const SUPABASE_KEY="sb_publishable_oy8rGLDWEFzCboJWyUwS3A_UzbAPCbW";const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);const money=n=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(n);const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 async function login(){const {error}=await db.auth.signInWithPassword({email:email.value.trim(),password:password.value});if(error){err.textContent=error.message;return}show()}
 async function logout(){await db.auth.signOut();location.reload()}
 async function show(){login.classList.add("hidden");app.classList.remove("hidden");await Promise.all([loadProducts(),loadOrders(),loadSettings()])}
