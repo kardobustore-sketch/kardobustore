@@ -55,12 +55,75 @@ button{
 ========================= */
 
 .login-screen{
-    width:100%;
-    min-height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:20px;
+    async function login() {
+  const emailInput = document.getElementById("email");
+  const passwordInput = document.getElementById("password");
+  const errBox = document.getElementById("err");
+
+  const emailValue = emailInput.value.trim();
+  const passwordValue = passwordInput.value;
+
+  errBox.textContent = "";
+
+  if (!emailValue || !passwordValue) {
+    errBox.textContent = "Email dan password wajib diisi.";
+    return;
+  }
+
+  try {
+    const { data, error } = await db.auth.signInWithPassword({
+      email: emailValue,
+      password: passwordValue
+    });
+
+    if (error) {
+      console.error("LOGIN ERROR:", error);
+      errBox.textContent = "Login gagal: " + error.message;
+      return;
+    }
+
+    if (!data.session || !data.user) {
+      errBox.textContent = "Login gagal: session tidak ditemukan.";
+      return;
+    }
+
+    // CEK APAKAH AKUN ADALAH ADMIN
+    const { data: adminData, error: adminError } =
+      await db.rpc("is_admin");
+
+    if (adminError) {
+      console.error("ADMIN CHECK ERROR:", adminError);
+
+      await db.auth.signOut();
+
+      errBox.textContent =
+        "Login berhasil, tetapi akun belum terdaftar sebagai ADMIN.";
+      return;
+    }
+
+    if (adminData !== true) {
+      await db.auth.signOut();
+
+      errBox.textContent =
+        "Akun ini bukan ADMIN.";
+      return;
+    }
+
+    // ADMIN VALID
+    document.getElementById("login").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+
+    await Promise.all([
+      loadProducts(),
+      loadOrders(),
+      loadSettings()
+    ]);
+
+  } catch (error) {
+    console.error(error);
+    errBox.textContent = "Terjadi kesalahan: " + error.message;
+  }
+    }
 }
 
 .login-box{
